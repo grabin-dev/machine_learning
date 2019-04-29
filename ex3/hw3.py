@@ -106,13 +106,12 @@ def multi_normal_pdf(x, mean, cov):
     Returns the normal distribution pdf according to the given mean and var for the given x.    
     """
     from math import pi
-    cov = cov
     cov_inv = np.linalg.inv(cov)
     det = np.linalg.det(cov)
     d = cov.shape[0]
-    fraction = 1 / np.sqrt(((pi * 2) ** d) * (det ** 2))
+    num1 = ((2 * pi) ** (-d / 2))* (det ** -0.5)
     exponent = np.exp(-0.5 * (x - mean).T @ cov_inv @ (x - mean))
-    return exponent * fraction
+    return exponent * num1
     
 
 ####################################################################################################
