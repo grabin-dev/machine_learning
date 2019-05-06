@@ -55,7 +55,7 @@ def get_num_of_gaussians():
     ###########################################################################
     # TODO: Implement the function.                                           #
     ###########################################################################
-    pass
+    k = 4
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -75,7 +75,11 @@ def init(points_list, k):
     ###########################################################################
     # TODO: Implement the function. compute init values for w, mu, sigma.     #
     ###########################################################################
-    pass
+    w = np.array([1 / k for i in range(k)])
+    std = points_list.std()
+    mean = points_list.mean()
+    mu = np.array([(i/k) * mean for i in range(1, k+1)])
+    sigma = np.array([(i/k) * std for i in range(1, k+1)])
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -95,7 +99,12 @@ def expectation(points_list, mu, sigma, w):
     ###########################################################################
     # TODO: Implement the function. compute likelihood array                  #
     ###########################################################################
-    pass
+    from scipy.stats import norm
+    likelihood = np.empty((len(points_list), len(w)))
+    for instance in range(likelihood.shape[0]):
+        for w_i in range(likelihood.shape[1]):
+            prob = norm(loc=mu[w_i],scale=sigma[w_i]).pdf(points_list[instance]) * w[w_i]
+            likelihood[instance,w_i] = prob
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -121,11 +130,23 @@ def maximization(points_list, ranks):
     ###########################################################################
     # TODO: Implement the function. compute w_new, mu_new, sigma_new          #
     ###########################################################################
-    pass
+    N = len(points_list)
+    w_amount = ranks.shape[1]
+    
+    w_new = np.empty(w_amount)
+    for w_i in range(w_amount):
+        w_new[w_i] = ranks[:,w_i].sum() / N
+    
+    mu_new = np.empty(w_amount)
+    for mu_i in range(w_amount):
+        mu_new[mu_i] = (ranks[:,mu_i] * points_list).sum() / (w_new[mu_i] * N)
+    
+    sigma_new = np.empty(w_amount)
+    for sigma_i in range(w_amount):
+        sigma_new[sigma_i] = np.sqrt((ranks[:,sigma_i] * ((points_list - mu_new[sigma_i]) ** 2)).sum() / (w_new[sigma_i] * N))
     ###########################################################################
     #                             END OF YOUR CODE                            #
-    ###########################################################################
-
+    ########################################################################## 
     return w_new, mu_new, sigma_new
 
 
@@ -140,7 +161,7 @@ def calc_max_delta(old_param, new_param):
     ###########################################################################
     # TODO: find the maximal delta between each old and new parameter         #
     ###########################################################################
-    pass
+    max_delta = np.absolute(new_param - old_param).max()
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -177,13 +198,9 @@ def expectation_maximization(points_list, k, max_iter, epsilon):
             mu: mu values of each gaussian. type: array
             sigma: sigma values of each gaussian. type: array
             log_likelihood: a list of the log likelihood values each iteration. type: list
-
-
     """
-    w = np.array([0.0])
-    mu = np.array([0.0])
-    sigma = np.array([0.0])
     # TODO: init values and then remove the 3 lines above
+    w, mu, sigma = init(np.array(points_list), k)
 
     # Loop until convergence
     delta = np.infty
@@ -193,21 +210,20 @@ def expectation_maximization(points_list, k, max_iter, epsilon):
     while delta > epsilon and iter_num <= max_iter:
 
         # E step
-        likelihood = None  # TODO: compute likelihood array
-
+        likelihood = expectation(points_list, mu, sigma, w)  # TODO: compute likelihood array
         likelihood_sum = likelihood.sum(axis=1)
         log_likelihood.append(np.sum(np.log(likelihood_sum), axis=0))
-
         # M step
-        ranks = None  # TODO: compute ranks array using the likelihood array
+        ranks = likelihood / likelihood_sum[:,None]  # TODO: compute ranks array using the likelihood array
 
-        w_new, mu_new, sigma_new = None, None, None   # TODO: compute w_new, mu_new, sigma_new
+        w_new, mu_new, sigma_new = maximization(points_list, ranks)   # TODO: compute w_new, mu_new, sigma_new
 
         # Check significant change in parameters
         delta = max(calc_max_delta(w, w_new), calc_max_delta(mu, mu_new), calc_max_delta(sigma, sigma_new))
-
         # TODO: below, set the new values for w, mu, sigma
-
+        w = w_new
+        mu = mu_new
+        sigma = sigma_new
         if iter_num % 10 == 0:
             res = ranks.argmax(axis=1)
             plot_gmm(k, res, mu, sigma, points_list, iter_num)
